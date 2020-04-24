@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <script src="https://kit.fontawesome.com/65d413949b.js" crossorigin="anonymous"></script>
+    <link rel= "stylesheet" type= "text/css" href="style.css">
+    <script src="https://code.highcharts.com/highcharts.js"></script>
+    <title>ESP_CurrentMeter</title>
+  </head>
+  <body>
+    <br>
+    <nav class="navbar fixed-bottom navbar-dark bg-dark" role="navigation">
+      <a href="http://192.168.1.73"><span class="my-nav-icons"><i class="fas fa-home"></i></span></a>
+      <a class="navbar-brand" href="#">ESP_CurrentMeter</a>               
+    </nav>
+    <div class="container">
+      <h4>Potencia agora</h4>
+      <h1 id=power_now></h1>
+      <br>
+      <div id="chart-current" class="container"></div>
+    </div>
+
+    <script>
+      Highcharts.setOptions({
+        global: {
+          useUTC: false
+        }
+      });
+      var chartT = new Highcharts.Chart({
+        chart:{ 
+          renderTo : 'chart-current' 
+        },
+        title: {
+           text: ''
+        },
+        series: [{
+          showInLegend: false,
+          data: []
+        }],
+        plotOptions: {
+          line: { animation: true,
+            dataLabels: { enabled: true }
+          },
+          series: { color: '#0066ff' }
+        },
+        xAxis: { type: 'datetime',
+          dateTimeLabelFormats: { second: '%H:%M:%S' }
+        },
+        yAxis: {
+          title: { text: 'Power (Watts)' }
+        },
+        credits: { enabled: false }
+      });
+      setInterval(function ( ) {
+        var xhttp = new XMLHttpRequest();
+        xhttp.onreadystatechange = function() {
+          if (this.readyState == 4 && this.status == 200) {
+
+            //Update Chart
+            var x = (new Date()).getTime(),
+                y = parseFloat(this.responseText);
+            if(chartT.series[0].data.length > 40) {
+              chartT.series[0].addPoint([x, y], true, true, true);
+            } else {
+              chartT.series[0].addPoint([x, y], true, false, true);
+            }
+                        
+            //Update H1
+            document.getElementById("power_now").innerHTML = xhttp.responseText + "W"; 
+          }
+        };
+        xhttp.open("GET", "/value", true);
+        xhttp.send();
+      }, 2000 ) ;
+    </script>
+    <script src="https://canvasjs.com/assets/script/jquery-1.11.1.min.js"></script>
+    <script src="https://canvasjs.com/assets/script/jquery.canvasjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
+  </body>
+</html>
+ 

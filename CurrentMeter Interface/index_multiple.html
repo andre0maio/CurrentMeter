@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <script src="https://kit.fontawesome.com/65d413949b.js" crossorigin="anonymous"></script>
+    <link rel= "stylesheet" type= "text/css" href="style.css">
+    <script src="https://code.highcharts.com/highcharts.js"></script>
+    <title>ESP_CurrentMeter</title>
+  </head>
+  <body>
+    <br>
+    <nav class="navbar fixed-bottom navbar-dark bg-dark" role="navigation">
+      <a href="http://192.168.1.100"><span class="my-nav-icons"><i class="fas fa-home"></i></span></a>
+      <a class="navbar-brand" href="#">ESP_CurrentMeter</a>               
+    </nav>
+    <div class="container">
+      <div class="row">
+        <div class="col-sm">
+            <h4>Potencia</h4>
+            <h1 id=power>0W</h1>
+        </div>
+        <div class="col-sm">
+          
+        </div>
+        <div class="col-sm">
+            <h4>Energia</h4>
+            <h1 id=energy>0KWh</h1>
+        </div>
+      </div>
+      <br>
+      <div id="chart-current" class="container"></div>
+      <br>
+      <table class="table">
+        <thead>
+          <tr>
+            <th scope="col">Tensao</th>
+            <th scope="col">Corrente</th>
+            <th scope="col">Frequencia</th>
+            <th scope="col">Fat. Potencia</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th id = voltage>0</th>
+            <td id = current>0</td>
+            <td id = frequency>0</td>
+            <td id = pf>0</td>
+          </tr>
+        </tbody>
+        <h3>Definicoes</h3>
+        <table class="table table-bordered">
+            <tbody>
+            <tr>
+                <th scope="row">Intervalo</th>
+                <td><input id="input_interval" type="text" class="form-control" placeholder="1000" readonly></td>
+            </tr>
+            <tr>
+                <th scope="row">Preco KWh</th>
+                <td><input id="kwh_price" type="text" class="form-control" placeholder="0,1585" readonly></td>
+            </tr>
+            <tr>
+                <th scope="row">MQTT Status</th>
+                <td id=mqtt_status>unknown</td>
+            </tr>
+            <tr>
+              <th scope="row">OTA Status</th>
+              <td id=ota_status>unknown</td>
+          </tr>
+          <tr>
+            <th scope="row">Contador Energia</th>
+            <td><button type="button" id="reset_button" class="btn btn-secondary btn-block" onclick="energy_reset()">Reset</button></td>
+          </tr>
+          <tr>
+            <th scope="row" colspan="2"><button type="button" class="btn btn-danger btn-block" onclick="esp_reboot()">ESP REBOOT</button></th>
+            <td></td>
+          </tr>
+            </tbody>
+        </table>
+      <br>
+      <br>
+      <br>
+      <br>
+    </div>
+    <script>
+      var interval = 1000;
+      var kwh_price = 0.1587;
+
+      document.getElementById("input_interval").placeholder = interval; 
+      document.getElementById("kwh_price").placeholder = kwh_price; 
+
+      function energy_reset(){
+        var txt;
+        if (confirm("Reset contador energia?")) {
+          $.get("/reset_energia");
+        } 
+      }
+      function esp_reboot(){
+        var txt;
+        if (confirm("Reboot ESP?")) {
+          $.get("/ESP_REBOOT");
+        } 
+      }
+      //FETCH OTA STATUS
+      setInterval(function ( ) {
+      var xhttp = new XMLHttpRequest();
+      xhttp.onreadystatechange = function() {
+        if (this.readyState == 4 && this.status == 200) {
+          document.getElementById("ota_status").innerHTML = xhttp.responseText;
+        }
+      };
+      xhttp.open("GET", "/OTA_Status", true);
+      xhttp.send();
+      }, interval );
+
+      //FETCH MQTT STATUS
+      setInterval(function ( ) {
+      var xhttp = new XMLHttpRequest();
+      xhttp.onreadystatechange = function() {
+        if (this.readyState == 4 && this.status == 200) {
+          document.getElementById("mqtt_status").innerHTML = xhttp.responseText;
+        }
+      };
+      xhttp.open("GET", "/MQTT_Status", true);
+      xhttp.send();
+    }, interval );
+
+
+      //Chart Clock timezone
+      Highcharts.setOptions({
+        global: {
+          useUTC: false
+        }
+      });
+
+      //Chart Configs
+      var chartT = new Highcharts.Chart({
+        chart:{ 
+          renderTo : 'chart-current' 
+        },
+        title: {
+           text: ''
+        },
+        series: [{
+          showInLegend: false,
+          data: []
+        }],
+        plotOptions: {
+          line: { animation: true,
+            dataLabels: { enabled: true }
+          },
+          series: { color: '#0066ff' }
+        },
+        xAxis: { type: 'datetime',
+          dateTimeLabelFormats: { second: '%H:%M:%S' }
+        },
+        yAxis: {
+          title: { text: 'Power (Watts)' }
+        },
+        credits: { enabled: false }
+      });
+      
+      //Update Values
+      setInterval(function ( ) {
+        var xhttp = new XMLHttpRequest();
+        xhttp.onreadystatechange = function() {
+          if (this.readyState == 4 && this.status == 200) {
+
+            //Update Chart
+            var x = (new Date()).getTime(),
+                y = parseFloat(this.responseText);
+            if(chartT.series[0].data.length > 40) {
+              chartT.series[0].addPoint([x, y], true, true, true);
+            } else {
+              chartT.series[0].addPoint([x, y], true, false, true);
+            }
+
+            document.getElementById("power").innerHTML = this.responseText + "W";
+          }
+        };
+        xhttp.open("GET", "/POWER", true);
+        xhttp.send();
+      }, interval );
+
+      setInterval(function ( ) {
+        var xhttp = new XMLHttpRequest();
+        xhttp.onreadystatechange = function() {
+          if (this.readyState == 4 && this.status == 200) {
+            document.getElementById("voltage").innerHTML = this.responseText + "V";
+          }
+        };
+        xhttp.open("GET", "/VOLTAGE", true);
+        xhttp.send();
+      }, interval ) ;
+      setInterval(function ( ) {
+        var xhttp = new XMLHttpRequest();
+        xhttp.onreadystatechange = function() {
+          if (this.readyState == 4 && this.status == 200) {
+            document.getElementById("current").innerHTML = this.responseText + "A";
+          }
+        };
+        xhttp.open("GET", "/CURRENT", true);
+        xhttp.send();
+      }, interval ) ;
+
+      setInterval(function ( ) {
+        var xhttp = new XMLHttpRequest();
+        xhttp.onreadystatechange = function() {
+          if (this.readyState == 4 && this.status == 200) {
+            document.getElementById("energy").innerHTML = this.responseText  + "KWh";
+          }
+          
+        };
+        xhttp.open("GET", "/ENERGY", true);
+        xhttp.send();
+      }, interval ) ;
+
+      setInterval(function ( ) {
+        var xhttp = new XMLHttpRequest();
+        xhttp.onreadystatechange = function() {
+          if (this.readyState == 4 && this.status == 200) {
+            document.getElementById("frequency").innerHTML = this.responseText + "Hz";
+          }
+        };
+        xhttp.open("GET", "/FREQUENCY", true);
+        xhttp.send();
+      }, interval ) ;
+
+      setInterval(function ( ) {
+        var xhttp = new XMLHttpRequest();
+        xhttp.onreadystatechange = function() {
+          if (this.readyState == 4 && this.status == 200) {
+            document.getElementById("pf").innerHTML = this.responseText;
+          }
+        };
+        xhttp.open("GET", "/PF", true);
+        xhttp.send();
+      }, interval ) ;
+
+    </script>
+    <script src="https://canvasjs.com/assets/script/jquery-1.11.1.min.js"></script>
+    <script src="https://canvasjs.com/assets/script/jquery.canvasjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
+  </body>
+</html>
+ 

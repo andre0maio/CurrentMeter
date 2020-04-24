@@ -1,0 +1,22 @@
+.my-badge{
+    float: right; 
+    width: 60px; 
+    height: 20px;
+}
+.my-nav-icons {
+    color: white;
+    font-size: 2em;
+}
+.my-icon{
+    padding-right: 15px;
+}
+p{
+    font-size: 15px;
+}
+hr{
+    border-top: 1px solid grey; 
+}
+h1 {
+    color:  #0099ff;
+    display: inline;
+}
